@@ -24,6 +24,7 @@ if (!fs.existsSync('uploads')) {
     fs.mkdirSync('uploads');
 }
 
+// Endpoint to handle file upload and conversion to MP3
 app.post('/upload', upload.single('audio'), (req, res) => {
     const filePath = req.file.path;
     const outputFilePath = path.join('uploads', `${Date.now()}.mp3`);
@@ -40,6 +41,19 @@ app.post('/upload', upload.single('audio'), (req, res) => {
             res.status(500).send({ message: 'Error processing file' });
         })
         .save(outputFilePath);
+});
+
+// Serve static files from the uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Endpoint to list all files in the uploads directory
+app.get('/list-uploads', (req, res) => {
+    fs.readdir('uploads', (err, files) => {
+        if (err) {
+            return res.status(500).send({ message: 'Unable to scan directory' });
+        }
+        res.send(files);
+    });
 });
 
 app.listen(port, () => {
