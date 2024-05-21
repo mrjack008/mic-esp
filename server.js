@@ -16,18 +16,23 @@ app.post('/upload', upload.single('audio'), (req, res) => {
   const outputFileName = `audio_${Date.now()}.mp3`;
   const outputPath = path.join(__dirname, 'public', 'audio', outputFileName);
 
+  console.log(`Received file: ${audioPath}`);
+
   // Convert to MP3
   ffmpeg(audioPath)
-    .audioBitrate(128)
-    .save(outputPath)
+    .inputFormat('s16le') // Specify input format for raw audio
+    .audioFrequency(8000) // Specify the sample rate to match the recording
+    .audioChannels(1) // Mono audio
+    .audioCodec('libmp3lame') // Use LAME MP3 encoder
     .on('end', () => {
       fs.unlinkSync(audioPath); // Delete the original file
       res.json({ message: 'Audio uploaded and converted', file: outputFileName });
     })
     .on('error', err => {
-      console.error(err);
-      res.status(500).send('Error processing audio file');
-    });
+      console.error('FFmpeg error:', err.message);
+      res.status(500).send(`Error processing audio file: ${err.message}`);
+    })
+    .save(outputPath);
 });
 
 // Serve MP3 files
