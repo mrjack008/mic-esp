@@ -7,6 +7,12 @@ const path = require('path');
 const app = express();
 const port = process.env.PORT || 3000;
 
+// Ensure the public/audio directory exists
+const audioDir = path.join(__dirname, 'public', 'audio');
+if (!fs.existsSync(audioDir)) {
+  fs.mkdirSync(audioDir, { recursive: true });
+}
+
 // Set up multer for file uploads
 const upload = multer({ dest: 'uploads/' });
 
@@ -14,7 +20,7 @@ const upload = multer({ dest: 'uploads/' });
 app.post('/upload', upload.single('audio'), (req, res) => {
   const audioPath = req.file.path;
   const outputFileName = `audio_${Date.now()}.mp3`;
-  const outputPath = path.join(__dirname, 'public', 'audio', outputFileName);
+  const outputPath = path.join(audioDir, outputFileName);
 
   console.log(`Received file: ${audioPath}`);
 
@@ -36,11 +42,10 @@ app.post('/upload', upload.single('audio'), (req, res) => {
 });
 
 // Serve MP3 files
-app.use('/audio', express.static(path.join(__dirname, 'public', 'audio')));
+app.use('/audio', express.static(audioDir));
 
 // List all MP3 files
 app.get('/list', (req, res) => {
-  const audioDir = path.join(__dirname, 'public', 'audio');
   fs.readdir(audioDir, (err, files) => {
     if (err) {
       return res.status(500).send('Unable to scan directory');
