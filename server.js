@@ -1,61 +1,49 @@
 const express = require('express');
+const fs = require('fs');
 const multer = require('multer');
 const ffmpeg = require('fluent-ffmpeg');
 const path = require('path');
-const fs = require('fs');
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
-// Set up storage for multer
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'uploads/');
-    },
-    filename: (req, file, cb) => {
-        cb(null, `${Date.now()}-${file.originalname}`);
-    }
-});
+// Set up multer for file uploads
+const upload = multer({ dest: 'uploads/' });
 
-const upload = multer({ storage });
-
-// Ensure uploads directory exists
-if (!fs.existsSync('uploads')) {
-    fs.mkdirSync('uploads');
-}
-
-// Endpoint to handle file upload and conversion to MP3
+// Upload endpoint
 app.post('/upload', upload.single('audio'), (req, res) => {
-    const filePath = req.file.path;
-    const outputFilePath = path.join('uploads', `${Date.now()}.mp3`);
+  const audioPath = req.file.path;
+  const outputFileName = `audio_${Date.now()}.mp3`;
+  const outputPath = path.join(__dirname, 'public', 'audio', outputFileName);
 
-    // Convert to mp3 using ffmpeg
-    ffmpeg(filePath)
-        .toFormat('mp3')
-        .on('end', () => {
-            fs.unlinkSync(filePath); // Remove the original file
-            res.send({ message: 'File uploaded and converted successfully', file: outputFilePath });
-        })
-        .on('error', (err) => {
-            console.error(err);
-            res.status(500).send({ message: 'Error processing file' });
-        })
-        .save(outputFilePath);
-});
-
-// Serve static files from the uploads directory
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-// Endpoint to list all files in the uploads directory
-app.get('/list-uploads', (req, res) => {
-    fs.readdir('uploads', (err, files) => {
-        if (err) {
-            return res.status(500).send({ message: 'Unable to scan directory' });
-        }
-        res.send(files);
+  // Convert to MP3
+  ffmpeg(audioPath)
+    .audioBitrate(128)
+    .save(outputPath)
+    .on('end', () => {
+      fs.unlinkSync(audioPath); // Delete the original file
+      res.json({ message: 'Audio uploaded and converted', file: outputFileName });
+    })
+    .on('error', err => {
+      console.error(err);
+      res.status(500).send('Error processing audio file');
     });
 });
 
+// Serve MP3 files
+app.use('/audio', express.static(path.join(__dirname, 'public', 'audio')));
+
+// List all MP3 files
+app.get('/list', (req, res) => {
+  const audioDir = path.join(__dirname, 'public', 'audio');
+  fs.readdir(audioDir, (err, files) => {
+    if (err) {
+      return res.status(500).send('Unable to scan directory');
+    }
+    res.json(files.filter(file => file.endsWith('.mp3')));
+  });
+});
+
 app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
+  console.log(`Server running at http://localhost:${port}/`);
 });
