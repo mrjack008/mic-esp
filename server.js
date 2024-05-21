@@ -29,7 +29,7 @@ app.post('/upload', upload.single('audio'), (req, res) => {
   chunks[req.file.originalname][chunkNumber - 1] = fs.readFileSync(audioPath);
   fs.unlinkSync(audioPath);
 
-  if (chunks[req.file.originalname].length === 10) { // Assuming 10 chunks
+  if (chunks[req.file.originalname].length === 3) { // Assuming 10 chunks
     const outputFileName = `audio_${Date.now()}.raw`;
     const outputPath = path.join(audioDir, outputFileName);
 
